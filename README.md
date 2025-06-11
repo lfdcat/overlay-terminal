@@ -1,5 +1,5 @@
 # Overlay Terminal
-- ![#1589F0]! tested only on arch linux with i3-wm !
+- ![#1589F0]tested only on arch linux with i3-wm
 # Description
 this is a simple python program that will create terminal window (kinda), that will run one command (for example you can use it to make twitch chat overlay on your screen, by running some twitch chat client in it)
 the window won't react to any input, and can't be focused - because it is overlay. So the only way to kill the program is by tray icon (or cancelling it from terminal)
