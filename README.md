@@ -22,4 +22,4 @@ then you can run it:
 ```bash
 ./overterm
 ```
-![Screenshot]()
+![Screenshot](https://github.com/tohyneylfd/overlay-terminal/blob/main/Screenshot.png?raw=true)
