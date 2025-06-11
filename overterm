@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+import sys
+import re
+from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QVBoxLayout, QWidget, QStyle, QDesktopWidget, QLabel
+from PyQt5.QtGui import QFont, QFontMetrics
+from PyQt5.QtCore import Qt, QProcess, QTimer, QSize
+
+class OverTerminal(QWidget):
+    def __init__(self, command):
+        super().__init__()
+        self.command = command
+        self.output_lines = []
+        self.max_lines = 20
+        self.char_limit = 30
+        self.initUI()
+        self.setupTray()
+        self.runCommand()
+        self.positionRight()
+
+    def initUI(self):
+        # window settings
+        self.setWindowTitle('OverTerminal')
+        self.setWindowFlags(
+            Qt.FramelessWindowHint | 
+            Qt.WindowStaysOnTopHint |
+            Qt.Tool |
+            Qt.X11BypassWindowManagerHint |
+            Qt.WindowTransparentForInput
+        )
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        
+        # label settings
+        self.label = QLabel()
+        self.mono_font = QFont('JetBrains Mono', 12)
+        self.label.setFont(self.mono_font)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.label.setWordWrap(True)
+        
+        # font and text size
+        self.font_metrics = QFontMetrics(self.mono_font)
+        self.char_width = self.font_metrics.horizontalAdvance('X')
+        self.line_height = self.font_metrics.height()
+        
+        style = """
+            QLabel {
+                color: #f0f0f0;
+                background-color: rgba(30, 30, 30, 80);
+                border-radius: 4px;
+                padding: 8px;
+            }
+        """
+        self.label.setStyleSheet(style)
+        
+        # layout settings
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+        
+        # initial size (height is dynamic)
+        self.max_width = (self.char_limit * self.char_width)
+        self.resize(self.max_width, 1)
+        
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.updateLabel)
+        self.update_timer.start(100)
+
+    def positionRight(self):
+        # position with padding
+        screen = QApplication.primaryScreen().geometry()
+        self.move(screen.width() - self.max_width - 20, 20)
+
+    def setupTray(self):
+        self.tray = QSystemTrayIcon(self)
+        icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
+        self.tray.setIcon(icon)
+        
+        menu = QMenu()
+        exit_action = menu.addAction("Exit")
+        exit_action.triggered.connect(self.cleanExit)
+        
+        self.tray.setContextMenu(menu)
+        self.tray.show()
+        self.tray.activated.connect(self.toggleVisibility)
+
+    def runCommand(self):
+        self.process = QProcess(self)
+        self.process.readyReadStandardOutput.connect(self.readOutput)
+        self.process.readyReadStandardError.connect(self.readError)
+        self.process.finished.connect(self.commandFinished)
+        self.process.start("bash", ["-c", self.command])
+
+    def readOutput(self):
+        data = self.process.readAllStandardOutput().data().decode(errors='replace')
+        self.addOutput(data)
+
+    def readError(self):
+        data = self.process.readAllStandardError().data().decode(errors='replace')
+        self.addOutput(f"[ERROR] {data}")
+
+    def addOutput(self, text):
+        # removing unnecessary symbols
+        text = re.sub(r'\x1b\[[0-9;]*[mK]', '', text)  # ANSI
+        text = text.replace('\t', '   ') # three spaces instead of tabs 
+        text = text.replace('\r\n', '\n').replace('\r', '\n') # new lines cleaned up
+        
+        # text wrapping
+        processed_lines = []
+        fixed_max_chars = self.char_limit
+        
+        for line in text.split('\n'):
+            if not line:
+                processed_lines.append('')
+                continue
+            while line:
+                if len(line) <= fixed_max_chars:
+                    processed_lines.append(line)
+                    break
+                
+                space_pos = line.rfind(' ', 0, fixed_max_chars)
+                if space_pos > fixed_max_chars // 2:
+                    processed_lines.append(line[:space_pos])
+                    line = line[space_pos+1:]
+                else:
+                    processed_lines.append(line[:fixed_max_chars])
+                    line = line[fixed_max_chars:]
+        
+        self.output_lines.extend(processed_lines)
+        
+        if len(self.output_lines) > self.max_lines:
+            self.output_lines = self.output_lines[-self.max_lines:]
+
+    def updateLabel(self):
+        text = '\n'.join(self.output_lines)
+        self.label.setText(text)
+        
+        # Ручной расчет высоты вместо adjustSize()
+        line_count = min(len(self.output_lines), self.max_lines)
+        height = (line_count * self.line_height) + 16
+        self.resize(self.max_width, height)
+
+    def commandFinished(self, exit_code, exit_status):
+        self.addOutput(f"\n[Process finished: exit code {exit_code}]")
+
+    def toggleVisibility(self, reason):
+        if reason == QSystemTrayIcon.DoubleClick:
+            self.setVisible(not self.isVisible())
+
+    def cleanExit(self):
+        if self.process and self.process.state() == QProcess.Running:
+            self.process.terminate()
+            self.process.waitForFinished(1000)
+        QApplication.quit()
+
+    def event(self, event):
+        # input blocking
+        if event.type() in [
+            event.KeyPress, event.KeyRelease,
+            event.MouseButtonPress, event.MouseButtonRelease,
+            event.MouseButtonDblClick, event.MouseMove,
+            event.Wheel, event.Enter, event.Leave,
+            event.HoverMove, event.ContextMenu
+        ]:
+            return True
+        return super().event(event)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    
+    if len(sys.argv) < 2:
+        print("Usage: overterm 'command'")
+        sys.exit(1)
+    
+    terminal = OverTerminal(" ".join(sys.argv[1:]))
+    terminal.show()
+    sys.exit(app.exec_())
