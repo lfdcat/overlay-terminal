@@ -11,11 +11,12 @@ you need to install python and PyQt5 library, then just download the overterm fi
 ```bash
 sudo pacman -S python
 sudo pacman -S python-pyqt5
-git clone https://github.com/tohyneylfd/overlay-terminal
+git clone https://github.com/tohyneylfd/overlay-terminal.git
 ```
 # Usage
 first, you need to make the program executable by doing this:
 ```bash
+cd overlay-terminal
 sudo chmod +x overterm
 ```
 then you can run it:
