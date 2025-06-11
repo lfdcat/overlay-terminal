@@ -24,6 +24,6 @@ then you can run it:
 ./overterm
 ```
 ![Screenshot](https://github.com/tohyneylfd/overlay-terminal/blob/main/Screenshot.png?raw=true)
-- on this screenshot i used https://github.com/dongy7/twitch-chat-cli (twitch chat client)
+- on this screenshot i used https://github.com/dongy7/twitch-chat-cli (so i ran this command: ./overterm 'npx twitch-chat-cli connect channel_name')
 # And also
 you can always edit the source code, to change font, background color, opacity etc.
