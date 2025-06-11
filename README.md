@@ -1,6 +1,6 @@
 # Overlay Terminal
 ```diff
-! tested only on arch linux with i3-wm
+!tested only on arch linux with i3-wm!
 ```
 # Description
 this is a simple python program that will create terminal window (kinda), that will run one command (for example you can use it to make twitch chat overlay on your screen, by running some twitch chat client in it)
