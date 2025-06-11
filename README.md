@@ -24,3 +24,5 @@ then you can run it:
 ./overterm
 ```
 ![Screenshot](https://github.com/tohyneylfd/overlay-terminal/blob/main/Screenshot.png?raw=true)
+# And also
+you can always edit the source code, to change font, background color, opacity etc.
